@@ -20,7 +20,8 @@ void setup() {
     Serial.begin(9600);
     Serial.print("Connecting to WiFi.");
   }
-  
+
+  pinMode(moistureSensorPin, INPUT);
   WiFi.begin(ssid, password);
   while ( WiFi.status() != WL_CONNECTED) {
     if(DEBUG) Serial.print(".");
