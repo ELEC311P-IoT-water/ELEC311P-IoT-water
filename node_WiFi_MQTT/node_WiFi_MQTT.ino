@@ -2,11 +2,32 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
+#include "settings_pass.h"
 
 //Sensor variables
 int moistureSensorPin = 2;
 float moistureVoltage = 0.0f;
 int moistureSensorValue = 0;
+
+//Defualt passwords and keys, true ones in settings_pass.h
+#ifndef SETTINGS_PASS_H
+#define SETTINGS_PASS_H
+#define WIFI_PASSWORD ""
+#define DEV_ID 1
+#endif
+
+//WiFi variables
+char wifi_ssid[] = "zcabmze";
+char wifi_password[] = WIFI_PASSWORD;
+WiFiClientSecure wifiClient;
+
+//AWS variables
+char aws_endpoint[] = "axf431iq9a2ee.iot.eu-central-1.amazonaws.com";
+int aws_port = 8883;
+const char * certPath = "/cert/cert.der";
+const char * keyPath = "/cert/key.der";
+void callback(char* topic, byte* payload, unsigned int length);
+PubSubClient client(aws_endpoint, aws_port, callback, wifiClient);
 
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Received message for topic ");
@@ -18,16 +39,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println();
 }
 
-WiFiClientSecure wifiClient;
-const char * domain = "axf431iq9a2ee.iot.eu-central-1.amazonaws.com";
-int port = 8883;
-const char * certPath = "/cert/cert.der";
-const char * keyPath = "/cert/key.der";
-PubSubClient client(domain, port, callback, wifiClient);
-
 void setup() {
   Serial.begin(9600);
-  WiFi.begin("zcabmze", "mironpass");
+  WiFi.begin(wifi_ssid, wifi_password);
   while ( WiFi.status() != WL_CONNECTED) { Serial.print("."); delay(300); }
   while (WiFi.localIP() == INADDR_NONE) { Serial.print("."); delay(300); }
 }
@@ -66,14 +80,17 @@ void loop() {
   if (!client.connected()) {
     reconnect();
   }
-  
-  if(client.publish("water","{\"id\": 6, \"moisture\": 129}")) {
-    Serial.println("Publish success");
+
+  moistureSensorValue = analogRead(moistureSensorPin);
+  char buffer[128];
+  sprintf(buffer, "{\"id\": %d, \"moisture\": %d}", DEV_ID, (moistureSensorValue/16));
+  if(client.publish("water", buffer)) {
+    if(DEBUG) Serial.println("Publish success");
   } else {
-    Serial.println("Publish failed");
+    if(DEBUG) Serial.println("Publish failed");
   }
  
-  // Check if any message were received
+  // Check if any messages were received
   // on the topic we subscribed to
   client.loop();
   delay(1000);
