@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
+#include "driverlib/prcm.h"
 #include "settings_pass.h"
 
 //Sensor variables
@@ -40,6 +41,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void setup() {
+  pinMode(moistureSensorPin, INPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(YELLOW_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+  
   Serial.begin(9600);
   WiFi.begin(wifi_ssid, wifi_password);
   while ( WiFi.status() != WL_CONNECTED) { Serial.print("."); delay(300); }
@@ -81,6 +87,11 @@ void loop() {
     reconnect();
   }
 
+  client.loop();
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(YELLOW_LED, LOW);
+  digitalWrite(RED_LED, LOW);
+
   moistureSensorValue = analogRead(moistureSensorPin);
   char buffer[128];
   sprintf(buffer, "{\"id\": %d, \"moisture\": %d}", DEV_ID, (moistureSensorValue/16));
@@ -93,5 +104,15 @@ void loop() {
   // Check if any messages were received
   // on the topic we subscribed to
   client.loop();
-  delay(1000);
+
+  delay(900);
+
+  client.loop();
+
+  delay(100);
+
+  MAP_PRCMHibernateIntervalSet(32*1024*30); //32*1024 == 1 second
+  MAP_PRCMHibernateWakeupSourceEnable(PRCM_HIB_SLOW_CLK_CTR);
+  //MAP_PRCMHibernateWakeUpGPIOSelect(PRCM_HIB_GPIO17, PRCM_HIB_RISE_EDGE);
+  MAP_PRCMHibernateEnter();
 }
